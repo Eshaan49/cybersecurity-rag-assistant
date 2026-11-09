@@ -1,4 +1,4 @@
-"""Command-line entry point for Cybersecurity RAG Assistant."""
+"""Command-line entry point for Cerebro cybersecurity intelligence."""
 
 from cybersecurity_rag.app import run_cli
 from cybersecurity_rag.cisa import CISADataError

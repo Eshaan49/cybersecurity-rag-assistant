@@ -1,0 +1,32 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      RETRIEVAL_STRATEGY: ${RETRIEVAL_STRATEGY:-bm25}
+      CISA_URL: ${CISA_URL:-https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:3000}
+      SEMANTIC_MODEL: ${SEMANTIC_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      SEMANTIC_INDEX_PATH: ${SEMANTIC_INDEX_PATH:-/app/.cache/kev_embeddings.npz}
+    volumes:
+      - semantic-cache:/app/.cache
+    restart: unless-stopped
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  semantic-cache:

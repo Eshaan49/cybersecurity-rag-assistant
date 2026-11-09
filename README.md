@@ -1,107 +1,129 @@
-# Cybersecurity RAG Assistant
+# Cerebro — Cybersecurity Intelligence Assistant
 
-A command-line assistant that retrieves relevant records from CISA's Known Exploited Vulnerabilities (KEV) catalog and asks Gemini to answer from those records. The project remains a lightweight Python application with no database or external service beyond CISA and Gemini.
+**AI-Powered Cybersecurity Intelligence Assistant**
 
-## How it works
+*Think smarter. Investigate deeper.*
 
-1. Validate the Gemini API key and read the configured model.
-2. Fetch and validate the CISA KEV JSON feed.
-3. Search the catalog using exact CVE ID matching followed by the existing rarity-weighted keyword ranking.
-4. If no evidence matches, report that no answer was generated. Otherwise, send the retrieved entries to Gemini and display the returned answer with the retrieved CVE IDs.
+Cerebro provides evidence-first vulnerability intelligence over CISA's Known Exploited Vulnerabilities (KEV) catalogue. It includes a Python CLI, a FastAPI service, and a premium dark SOC-inspired dashboard with teal/cyan accents. BM25 is the default; the original lexical baseline is retained. Semantic and hybrid retrieval are optional and have not been quality-evaluated.
 
-Retrieval is lexical and uses CISA KEV records only. It does not yet use embeddings, BM25, or additional cybersecurity sources. The model is instructed to use the retrieved entries, but generated claims are not independently verified.
+## Architecture
 
-## Project structure
-
-```text
-cybersecurity_rag/
-  config.py       Environment-based settings and validation
-  cisa.py         CISA feed retrieval and schema checks
-  retrieval.py    Exact CVE and rarity-weighted keyword retrieval
-  gemini.py       Gemini API client and response validation
-  app.py          Application orchestration and CLI flow
-rag.py            Main assistant entry point
-search.py         Retrieval-only compatibility CLI
-api_test.py       CISA feed diagnostic
-check.py          Gemini model-list diagnostic
-tests/            Mocked pytest tests
+```mermaid
+flowchart LR
+  Analyst[Analyst] --> UI[Next.js dashboard]
+  UI -->|REST / JSON| API[FastAPI]
+  CLI[Python CLI] --> Core[cybersecurity_rag package]
+  API --> Core
+  Core --> CISA[CISA KEV feed]
+  Core --> R[Baseline / BM25 default / optional semantic & RRF hybrid]
+  R --> E[Retrieved KEV evidence]
+  E --> Gemini[Optional Gemini generation]
+  E --> API
+  API --> UI
 ```
 
-## Requirements and installation
+The CISA feed is fetched lazily on the first catalogue request and held in memory for the process. The API returns source CVE identifiers and evidence records alongside generated answers. Without a Gemini key, catalogue retrieval remains available and chat returns the retrieved evidence without claiming an AI answer was generated.
 
-Python 3.10 or newer is recommended. Install runtime dependencies from the repository root:
+## Features
 
-```bash
-python -m pip install -r requirements.txt
-```
+- CISA KEV catalogue search and CVE details, with an optional exact vendor metadata filter in the CVE Explorer.
+- Exact CVE matching and BM25 retrieval by default; original baseline retained.
+- Optional local Sentence Transformers and reciprocal-rank hybrid strategies; require optional dependencies/model files not included in the default install.
+- Gemini answer generation when configured, with evidence-first prompting.
+- API health, catalogue, CVE detail, and chat routes.
+- Offline BM25-vs-baseline benchmark against a hash-pinned CISA snapshot.
 
-To run the test suite, also install the development requirements:
+## Requirements
 
-```bash
-python -m pip install -r requirements-dev.txt
-```
+- Python 3.10+
+- Node.js 20+
+- Docker Compose is optional for containerized local demonstration.
+- Gemini credentials are optional; without them the dashboard still supports KEV exploration and evidence retrieval.
 
-## Configuration
-
-Set `GEMINI_API_KEY` in the process environment. The key is never stored in the repository. The default model is `gemini-3.5-flash-lite`; override it with `GEMINI_MODEL` if needed.
-
-PowerShell:
-
-```powershell
-$env:GEMINI_API_KEY = "your_key_here"
-# Optional:
-$env:GEMINI_MODEL = "gemini-3.5-flash-lite"
-```
-
-macOS/Linux:
-
-```bash
-export GEMINI_API_KEY="your_key_here"
-# Optional:
-export GEMINI_MODEL="gemini-3.5-flash-lite"
-```
-
-The application reads these variables from the process environment; it does not load a `.env` file.
-
-## Run
+## Run locally (Windows PowerShell)
 
 From the repository root:
 
-```bash
-python rag.py
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-Retrieval-only mode:
+Set environment variables in the current PowerShell session. Add a Gemini key only if AI-generated answers are desired:
 
-```bash
-python search.py
+```powershell
+$env:RETRIEVAL_STRATEGY = "bm25"
+$env:GEMINI_API_KEY = "" # Optional; set your own key to enable Gemini
+$env:FRONTEND_ORIGINS = "http://localhost:3000"
+uvicorn cybersecurity_rag.api:app --reload
 ```
 
-Diagnostics:
+In a second PowerShell terminal:
 
-```bash
-python api_test.py  # Fetch and summarize the KEV feed
-python check.py     # List Gemini Flash models available to the key
+```powershell
+cd frontend
+Copy-Item .env.example .env.local
+npm install
+npm run dev
 ```
 
-The diagnostics make network requests only when run as scripts. Importing these modules does not prompt or contact external services.
+Open <http://localhost:3000>. The API is at <http://localhost:8000>; interactive API docs are at <http://localhost:8000/docs>.
 
-## Tests
+The backend reads process environment variables; it does not load `.env` automatically. `.env` is used by Docker Compose. For local Python runs, set variables in PowerShell as above. Never put real credentials in committed files.
 
-Tests use mocked HTTP boundaries and do not require API credentials or external network access:
+## Configuration
 
-```bash
-python -m pytest
+| Variable | Default | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | empty | Optional Gemini credential |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Gemini model name |
+| `RETRIEVAL_STRATEGY` | `bm25` | `baseline`, `bm25`, `semantic`, or `hybrid` |
+| `CISA_URL` | Official CISA KEV feed | Feed URL |
+| `FRONTEND_ORIGINS` | `http://localhost:3000` | Comma-separated CORS origins |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Browser-visible API base URL |
+| `SEMANTIC_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Optional local model identifier |
+| `SEMANTIC_INDEX_PATH` | `.cache/kev_embeddings.npz` | Local fingerprinted embedding cache |
+
+Semantic/hybrid mode currently requires installing `sentence-transformers` separately and making the model available. The project does not install or download a model automatically; unavailable dependencies produce an explicit API error. BM25 does not depend on Sentence Transformers.
+
+## API
+
+- `GET /health` — service status, configured retrieval strategy, and Gemini-key presence (never returns the key).
+- `GET /api/v1/cves?q=...&vendor=...&limit=25&offset=0` — list or retrieve matching KEV records. `vendor` is an optional case-insensitive exact match against CISA's vendor field; BM25 keywords alone do not enforce vendor boundaries.
+- `GET /api/v1/cves/{cve_id}` — retrieve one CVE record.
+- `POST /api/v1/chat` — JSON body `{"question":"...", "top_k":5}`; returns answer status, evidence records, source CVE identifiers, titles, and CISA links.
+
+Chat statuses distinguish generated answers, insufficient evidence, missing Gemini configuration, and generation errors. CISA/network failures return service-unavailable errors; invalid inputs return validation errors.
+
+## Tests and benchmark
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+python -m benchmarks.run_benchmark --k 3 --repeats 50 --seed 20261106
 ```
 
-## Security and limitations
+The benchmark compares only baseline and BM25. Its 7 seed judgments are preliminary; 4 expansion judgments are catalog-reviewed, not independently validated by security experts. It is a small development set and does not establish general retrieval quality. No semantic/hybrid benchmark results are claimed. Measurements are machine-specific.
 
-- API keys are read from the environment and sent in the Gemini request header.
-- Network calls use finite timeouts, and provider error details are not included in user-facing exceptions.
-- Invalid feed entries are skipped; an invalid feed envelope or a nonempty feed with no usable entries is rejected.
-- The catalog is fetched at application start and held in memory for that run; there is no cache or offline fallback.
-- Retrieval is lexical. Exact CVE IDs are prioritized, but paraphrased questions may not find relevant records.
-- The model is prompted to answer from retrieved evidence. The application reports retrieved CVE IDs but does not yet validate each generated claim or citation.
+## Docker Compose
+
+Copy `.env.example` to `.env`, optionally set `GEMINI_API_KEY`, then run:
+
+```powershell
+docker compose up --build
+```
+
+Open <http://localhost:3000>. Stop with `Ctrl+C`, or `docker compose down`. Docker builds fetch their declared Python/Node dependencies from package registries. Deployment to an external host has not been performed.
+
+## Limitations
+
+- Catalogue data is loaded on the first API call and cached in memory; no refresh scheduler or database is included.
+- Gemini output is not independently fact-checked. Retrieved CISA records are displayed as supporting sources, but the app does not validate every generated claim against a citation.
+- The CISA KEV feed does not provide full NVD enrichment or ATT&CK relationships; neither is represented as if present.
+- Semantic and hybrid retrieval are optional, dependency/model availability is unverified here, and retrieval quality has not been benchmarked.
+- The benchmark snapshot is pinned to catalog version `2026.11.06` and does not track current feed updates.
 
 ## License
 

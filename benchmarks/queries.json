@@ -1,0 +1,100 @@
+{
+  "catalog": {
+    "version": "2026.11.06",
+    "dateReleased": "2026-11-06T19:44:45.1797Z",
+    "recordCount": 1769,
+    "source": "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json",
+    "snapshot": "data/kev_catalog_2026-11-06.json",
+    "sha256": "47e0406b2be5a40420eff66f3d90e83eb8883dae6ff4d08e1b2a942c366f6cc2"
+  },
+  "queries": [
+    {
+      "id": "seed_exact_cve",
+      "type": "exact_cve",
+      "category": "exact CVE identifier",
+      "query": "CVE-2026-19868",
+      "relevant_cves": ["CVE-2026-19868"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "seed_vendor_sonicwall",
+      "type": "natural_language",
+      "category": "vendor-specific",
+      "query": "SonicWall single-factor authentication SAML MFA bypass",
+      "relevant_cves": ["CVE-2026-19868"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "seed_product_gitlab",
+      "type": "natural_language",
+      "category": "product-specific",
+      "query": "GitLab Community Edition Enterprise Edition integer overflow regex",
+      "relevant_cves": ["CVE-2026-97229"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "seed_rce_printnightmare",
+      "type": "natural_language",
+      "category": "remote code execution",
+      "query": "Windows Print Spooler remote code execution SYSTEM privileges",
+      "relevant_cves": ["CVE-2021-34527"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "seed_auth_ivanti",
+      "type": "natural_language",
+      "category": "authentication bypass",
+      "query": "Ivanti Connect Secure bypass authentication controls access restricted resources",
+      "relevant_cves": ["CVE-2023-46805"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "seed_privilege_ivanti",
+      "type": "natural_language",
+      "category": "privilege escalation",
+      "query": "Ivanti Connect Secure local authenticated attacker escalate privileges",
+      "relevant_cves": ["CVE-2026-111357"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "seed_description_log4j",
+      "type": "natural_language",
+      "category": "description and keywords",
+      "query": "Apache Log4j2 attacker-controlled JNDI endpoints remote code execution",
+      "relevant_cves": ["CVE-2021-44228"],
+      "judgment_status": "preliminary_seed"
+    },
+    {
+      "id": "reviewed_proxylogon_chain",
+      "type": "natural_language",
+      "category": "vendor and exploit-chain description",
+      "query": "Microsoft Exchange Server ProxyLogon remote code execution",
+      "relevant_cves": ["CVE-2021-26855", "CVE-2021-26857", "CVE-2021-26858", "CVE-2021-27065"],
+      "judgment_status": "catalog_reviewed_expansion"
+    },
+    {
+      "id": "reviewed_cisco_privilege_chain",
+      "type": "natural_language",
+      "category": "authentication and privilege escalation chain",
+      "query": "Cisco IOS XE Web UI create a privilege 15 account and elevate to root",
+      "relevant_cves": ["CVE-2023-20198", "CVE-2023-20273"],
+      "judgment_status": "catalog_reviewed_expansion"
+    },
+    {
+      "id": "reviewed_ivanti_auth_bypass",
+      "type": "natural_language",
+      "category": "vendor and product authentication bypass",
+      "query": "Ivanti Connect Secure authentication bypass",
+      "relevant_cves": ["CVE-2023-46805", "CVE-2026-104935"],
+      "judgment_status": "catalog_reviewed_expansion"
+    },
+    {
+      "id": "reviewed_print_spooler_rce",
+      "type": "natural_language",
+      "category": "product-specific remote code execution",
+      "query": "Microsoft Windows Print Spooler remote code execution",
+      "relevant_cves": ["CVE-2021-1675", "CVE-2021-34527"],
+      "judgment_status": "catalog_reviewed_expansion"
+    }
+  ]
+}
