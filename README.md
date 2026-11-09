@@ -1,130 +1,264 @@
-# Cerebro — Cybersecurity Intelligence Assistant
+# 🧠 Cerebro
 
-**AI-Powered Cybersecurity Intelligence Assistant**
+### AI-Powered Cybersecurity Intelligence Assistant
 
 *Think smarter. Investigate deeper.*
 
-Cerebro provides evidence-first vulnerability intelligence over CISA's Known Exploited Vulnerabilities (KEV) catalogue. It includes a Python CLI, a FastAPI service, and a premium dark SOC-inspired dashboard with teal/cyan accents. BM25 is the default; the original lexical baseline is retained. Semantic and hybrid retrieval are optional and have not been quality-evaluated.
+Cerebro is an evidence-first vulnerability research assistant for exploring CISA's Known Exploited Vulnerabilities (KEV) catalogue. It combines exact CVE lookup and lexical retrieval with an optional Gemini answer step, exposed through a FastAPI backend and a dark SOC-inspired Next.js dashboard.
 
-## Architecture
+> **Project status:** Local portfolio MVP. Docker configuration is included; public deployment has not been performed. Gemini is optional. BM25 is the default retrieval strategy. Semantic and hybrid modes are experimental options with no quality evaluation reported.
+
+---
+
+## ⚡ Overview
+
+Security analysts often need to move quickly from a vendor, product, behavior, or CVE identifier to credible vulnerability evidence. Cerebro makes the CISA KEV catalogue searchable and returns the source records beside its answers. When Gemini is not configured, the application remains useful for catalogue search and evidence review without implying that an AI answer was generated.
+
+## 📊 Verified project metrics
+
+| Measure | Verified value | Context |
+|---|---:|---|
+| Frozen CISA KEV records | 1,769 | Snapshot version `2026.11.06`; SHA-256 verified by the benchmark runner |
+| Backend automated tests | 81 passed | Latest complete backend suite before this documentation update |
+| Frontend selection tests | 3 passed | Node built-in test runner |
+| Retrieval benchmark queries | 11 | 1 exact-CVE query and 10 natural-language queries |
+| Natural-language query judgments | 10 | 6 preliminary seeds and 4 catalog-reviewed expansions |
+| Semantic/hybrid relevance evaluation | Not performed | No performance or quality claim is made |
+
+Test counts describe the last verified application run, not a continuous integration service. Benchmark figures below are from the recorded 50-repetition runs against the pinned snapshot; they are development measurements, not production service-level claims.
+
+## ✨ Key features
+
+- **CISA KEV Explorer:** search catalogue records and inspect vendor, product, description, date, required action, and available source details.
+- **Exact CVE lookup:** prioritize exact identifiers in supported retrieval strategies.
+- **BM25 retrieval:** default strategy, with a retained rarity-weighted baseline for comparison.
+- **Optional vendor filter:** case-insensitive exact match against CISA's vendor metadata; BM25 keyword scoring alone does not guarantee a single-vendor result set.
+- **AI Security Analyst:** optionally ask Gemini to answer using retrieved KEV entries. Retrieved CVEs and CISA source links are shown with the response.
+- **Evidence-first fallback:** without a Gemini key, return retrieved records and state that no AI answer was generated; with no retrieval evidence, abstain.
+- **Local portfolio interface:** responsive Next.js App Router dashboard with overview, analyst chat, and CVE Explorer views.
+- **Reproducible lexical benchmark:** baseline and BM25 are measured against the same pinned CISA snapshot and query labels.
+
+## 🏗️ System architecture
 
 ```mermaid
 flowchart LR
-  Analyst[Analyst] --> UI[Next.js dashboard]
-  UI -->|REST / JSON| API[FastAPI]
-  CLI[Python CLI] --> Core[cybersecurity_rag package]
-  API --> Core
-  Core --> CISA[CISA KEV feed]
-  Core --> R[Baseline / BM25 default / optional semantic & RRF hybrid]
-  R --> E[Retrieved KEV evidence]
-  E --> Gemini[Optional Gemini generation]
-  E --> API
-  API --> UI
+    Analyst[Security analyst] --> UI[Next.js dashboard]
+    UI -->|REST / JSON| API[FastAPI API]
+    CLI[Python CLI] --> Core[cybersecurity_rag package]
+    API --> Core
+    Core -->|fetch, validate, cache in process| KEV[CISA KEV feed]
+    Core --> Retrieval{Configured retrieval}
+    Retrieval --> Exact[Exact CVE lookup]
+    Retrieval --> BM25[BM25 default]
+    Retrieval --> Baseline[Original lexical baseline]
+    Retrieval -. optional, not evaluated .-> Semantic[Sentence Transformers]
+    BM25 -. optional RRF .-> Hybrid[Hybrid retrieval]
+    Semantic -. optional RRF .-> Hybrid[Hybrid retrieval]
+    Exact --> Evidence[Retrieved KEV records]
+    BM25 --> Evidence
+    Baseline --> Evidence
+    Semantic --> Evidence
+    Hybrid --> Evidence
+    Evidence -->|optional generation| Gemini[Gemini API]
+    Evidence --> API
+    Gemini --> API
+    API --> UI
 ```
 
-The CISA feed is fetched lazily on the first catalogue request and held in memory for the process. The API returns source CVE identifiers and evidence records alongside generated answers. Without a Gemini key, catalogue retrieval remains available and chat returns the retrieved evidence without claiming an AI answer was generated.
+## 🔎 RAG workflow
 
-## Features
+1. **Load configuration.** BM25 is selected by default; Gemini credentials are optional for retrieval-only use.
+2. **Load the catalogue.** On the first catalogue request, the API fetches the CISA KEV JSON feed, checks its response, validates records, and keeps the resulting catalogue in process memory.
+3. **Retrieve evidence.** Queries are validated. Exact CVE identifiers are prioritized; otherwise the configured retrieval strategy returns matching catalogue records. A vendor filter, when supplied, is applied against the actual `vendorProject` field.
+4. **Abstain when there is no evidence.** The API reports insufficient evidence rather than asking Gemini to answer an unsupported query.
+5. **Generate optionally.** With a configured Gemini key, retrieved records are passed to the existing Gemini integration with instructions to treat catalogue text as data, not as executable instructions.
+6. **Return answer and sources.** The response includes source CVE IDs, CISA links, and the retrieved evidence. The model's individual claims are not independently validated.
 
-- CISA KEV catalogue search and CVE details, with an optional exact vendor metadata filter in the CVE Explorer.
-- Exact CVE matching and BM25 retrieval by default; original baseline retained.
-- Optional local Sentence Transformers and reciprocal-rank hybrid strategies; require optional dependencies/model files not included in the default install.
-- Gemini answer generation when configured, with evidence-first prompting.
-- API health, catalogue, CVE detail, and chat routes.
-- Offline BM25-vs-baseline benchmark against a hash-pinned CISA snapshot.
+## 📈 BM25 benchmark
 
-## Requirements
+The offline benchmark uses CISA KEV catalog version `2026.11.06` (1,769 records, SHA-256 `47e0406b2be5a40420eff66f3d90e83eb8883dae6ff4d08e1b2a942c366f6cc2`). It uses 7 preliminary seed queries and 4 catalog-reviewed expansion queries. “Catalog-reviewed” means checked against source catalogue fields, not independently judged by a security-domain expert.
 
-- Python 3.10+
-- Node.js 20+
-- Docker Compose is optional for containerized local demonstration.
-- Gemini credentials are optional; without them the dashboard still supports KEV exploration and evidence retrieval.
+### Natural-language retrieval metrics
 
-## Run locally (Windows PowerShell)
+| Cutoff | Strategy | Precision@K | Recall@K | MRR@K |
+|---:|---|---:|---:|---:|
+| 3 | Baseline | 0.400 | 0.775 | 0.800 |
+| 3 | BM25 | 0.500 | 0.975 | 1.000 |
+| 5 | Baseline | 0.280 | 0.850 | 0.800 |
+| 5 | BM25 | 0.320 | 1.000 | 1.000 |
 
-From the repository root:
+Exact-CVE evaluation is separate: at both K=3 and K=5, baseline and BM25 each achieved Recall@K 1.000 and MRR@K 1.000 on the single exact-CVE query. P@3 was 0.333 and P@5 was 0.200 because precision uses K as the denominator even when fewer results are returned.
+
+### Recorded retrieval timing
+
+50 warm-query repetitions per query, 20 BM25 index-build repetitions, random strategy order with seed `20261106`. Values are median / nearest-rank p95 milliseconds from the local benchmark environment.
+
+| K | Query set | Baseline warm | BM25 warm | BM25 index build | BM25 cold one-query total |
+|---:|---|---:|---:|---:|---:|
+| 3 | All 10 natural-language queries | 20.212 / 38.125 | 6.929 / 15.741 | 76.196 / 108.420 | 81.602 / 111.775 |
+| 5 | All 10 natural-language queries | 20.707 / 39.606 | 7.469 / 15.355 | 75.857 / 108.168 | 81.371 / 118.504 |
+
+These small-set measurements are machine-specific and include no statistical confidence interval. Warm BM25 excludes index construction; a cold one-query run includes it. Relevance completeness is uncertain, so these figures do not establish general effectiveness or universal performance improvement. The benchmark does not evaluate semantic or hybrid retrieval.
+
+Run it again from the repository root:
+
+```powershell
+python -m benchmarks.run_benchmark --k 3 --repeats 50 --seed 20261106
+python -m benchmarks.run_benchmark --k 5 --repeats 50 --seed 20261106
+```
+
+## 🧰 Technology stack
+
+| Area | Technologies |
+|---|---|
+| Backend | Python, FastAPI, Pydantic, Requests |
+| Retrieval | CISA KEV, exact CVE lookup, BM25, retained lexical baseline |
+| Optional generation | Google Gemini `generateContent` API |
+| Optional retrieval experiments | Sentence Transformers (`all-MiniLM-L6-v2`), local NumPy embedding cache, reciprocal-rank fusion; not in default dependencies |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind CSS |
+| Packaging | Docker, Docker Compose |
+| Tests | pytest, Node built-in test runner, TypeScript compiler |
+
+## 🔌 API reference
+
+| Method and path | Purpose |
+|---|---|
+| `GET /health` | API health, configured retrieval strategy, and whether a Gemini key is configured (the key itself is never returned). |
+| `GET /api/v1/cves?q=...&vendor=...&limit=25&offset=0` | List/search KEV entries. Optional `vendor` is an exact, case-insensitive match on CISA vendor metadata. |
+| `GET /api/v1/cves/{cve_id}` | Return the matching CISA KEV record or a validation/not-found error. |
+| `POST /api/v1/chat` | Accept `{"question":"...", "top_k":5}`; return answer status, retrieved evidence, source CVE IDs, and CISA links. |
+
+Chat distinguishes generated answers, insufficient evidence, missing Gemini configuration, and generation errors. Explore the generated schema interactively at `/docs` while running the API locally.
+
+## 📸 Dashboard screenshots
+
+No genuine screenshots were available in the repository workspace during this README update. The `docs/screenshots/` directory is reserved for captures from the running app. Screenshots will be added when a live Cerebro UI can be captured and verified; no mock interface images are used here.
+
+## ⚙️ Installation and configuration
+
+### Local development — Windows PowerShell
+
+From the repository root, create and activate an environment and install the backend dependencies:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-```
-
-Set environment variables in the current PowerShell session. Add a Gemini key only if AI-generated answers are desired:
-
-```powershell
 $env:RETRIEVAL_STRATEGY = "bm25"
-$env:GEMINI_API_KEY = "" # Optional; set your own key to enable Gemini
 $env:FRONTEND_ORIGINS = "http://localhost:3000"
+# Optional: set a real key in your shell to enable generated answers.
+$env:GEMINI_API_KEY = ""
 uvicorn cybersecurity_rag.api:app --reload
 ```
 
-In a second PowerShell terminal:
+In a second terminal:
 
 ```powershell
 cd frontend
 Copy-Item .env.example .env.local
-npm install
+npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>. The API is at <http://localhost:8000>; interactive API docs are at <http://localhost:8000/docs>.
+Open [http://localhost:3000](http://localhost:3000). FastAPI documentation is available at [http://localhost:8000/docs](http://localhost:8000/docs). The backend reads process environment variables directly; it does not load `.env` for local Python execution. Never commit a real key.
 
-The backend reads process environment variables; it does not load `.env` automatically. `.env` is used by Docker Compose. For local Python runs, set variables in PowerShell as above. Never put real credentials in committed files.
-
-## Configuration
+### Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | empty | Optional Gemini credential |
-| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Gemini model name |
+| `GEMINI_API_KEY` | Empty | Optional Gemini credential; never committed |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Gemini model identifier |
 | `RETRIEVAL_STRATEGY` | `bm25` | `baseline`, `bm25`, `semantic`, or `hybrid` |
-| `CISA_URL` | Official CISA KEV feed | Feed URL |
+| `CISA_URL` | Official CISA KEV feed | CISA JSON feed URL |
 | `FRONTEND_ORIGINS` | `http://localhost:3000` | Comma-separated CORS origins |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Browser-visible API base URL |
-| `SEMANTIC_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Optional local model identifier |
-| `SEMANTIC_INDEX_PATH` | `.cache/kev_embeddings.npz` | Local fingerprinted embedding cache |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Browser-visible FastAPI base URL |
+| `SEMANTIC_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Optional semantic model name |
+| `SEMANTIC_INDEX_PATH` | `.cache/kev_embeddings.npz` | Local fingerprinted embedding cache path |
 
-Semantic/hybrid mode currently requires installing `sentence-transformers` separately and making the model available. The project does not install or download a model automatically; unavailable dependencies produce an explicit API error. BM25 does not depend on Sentence Transformers.
+Semantic/hybrid mode requires separately installing `sentence-transformers` and making model files available. This dependency and model are not included in the default installation, and semantic/hybrid retrieval quality has not been measured. BM25 works without them.
 
-## API
+## 🐳 Docker
 
-- `GET /health` — service status, configured retrieval strategy, and Gemini-key presence (never returns the key).
-- `GET /api/v1/cves?q=...&vendor=...&limit=25&offset=0` — list or retrieve matching KEV records. `vendor` is an optional case-insensitive exact match against CISA's vendor field; BM25 keywords alone do not enforce vendor boundaries.
-- `GET /api/v1/cves/{cve_id}` — retrieve one CVE record.
-- `POST /api/v1/chat` — JSON body `{"question":"...", "top_k":5}`; returns answer status, evidence records, source CVE identifiers, titles, and CISA links.
+Copy the example configuration and optionally set `GEMINI_API_KEY` in `.env`, then build and start both services:
 
-Chat statuses distinguish generated answers, insufficient evidence, missing Gemini configuration, and generation errors. CISA/network failures return service-unavailable errors; invalid inputs return validation errors.
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
 
-## Tests and benchmark
+The frontend is served at [http://localhost:3000](http://localhost:3000), and the API at [http://localhost:8000](http://localhost:8000). Stop with `Ctrl+C` or run `docker compose down`. Image builds retrieve declared dependencies from package registries. No external deployment is currently verified.
+
+## 🧪 Tests
 
 ```powershell
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
-python -m benchmarks.run_benchmark --k 3 --repeats 50 --seed 20261106
+cd frontend
+npm ci
+npm run test:selection
+npm run typecheck
+npm run build
 ```
 
-The benchmark compares only baseline and BM25. Its 7 seed judgments are preliminary; 4 expansion judgments are catalog-reviewed, not independently validated by security experts. It is a small development set and does not establish general retrieval quality. No semantic/hybrid benchmark results are claimed. Measurements are machine-specific.
+The backend tests mock HTTP boundaries and do not require live CISA/Gemini access. The frontend selection tests use Node's built-in test runner.
 
-## Docker Compose
+## 📁 Project structure
 
-Copy `.env.example` to `.env`, optionally set `GEMINI_API_KEY`, then run:
-
-```powershell
-docker compose up --build
+```text
+cybersecurity-rag-assistant/
+├── cybersecurity_rag/       # Configuration, CISA, retrieval, Gemini, API, app
+├── frontend/                 # Next.js dashboard and selection tests
+├── tests/                    # Backend unit and API handler tests
+├── benchmarks/               # Frozen CISA snapshot, labels, evaluator
+├── docs/screenshots/         # Reserved for genuine UI captures
+├── Dockerfile                # FastAPI service image
+├── docker-compose.yml        # Local API + frontend orchestration
+├── rag.py                    # Existing CLI entry point
+├── search.py                 # Retrieval-only CLI
+└── README.md
 ```
 
-Open <http://localhost:3000>. Stop with `Ctrl+C`, or `docker compose down`. Docker builds fetch their declared Python/Node dependencies from package registries. Deployment to an external host has not been performed.
+## 🛡️ Security design
 
-## Limitations
+- API credentials are read from environment variables and excluded from settings representations; `.env` files are ignored by Git.
+- Network clients use finite timeouts and sanitized provider errors.
+- CISA records are parsed and validated before they enter retrieval.
+- Retrieved feed content is treated as untrusted data in the Gemini prompt, not as instructions.
+- Generation is skipped when retrieval yields no evidence; a missing Gemini key leaves evidence retrieval available.
+- When optional semantic retrieval is enabled, its embedding cache defaults to a local `.cache` path ignored by Git; no vector database or external retrieval service is used.
 
-- Catalogue data is loaded on the first API call and cached in memory; no refresh scheduler or database is included.
-- Gemini output is not independently fact-checked. Retrieved CISA records are displayed as supporting sources, but the app does not validate every generated claim against a citation.
-- The CISA KEV feed does not provide full NVD enrichment or ATT&CK relationships; neither is represented as if present.
-- Semantic and hybrid retrieval are optional, dependency/model availability is unverified here, and retrieval quality has not been benchmarked.
-- The benchmark snapshot is pinned to catalog version `2026.11.06` and does not track current feed updates.
+## ⚠️ Current limitations
 
-## License
+- CISA KEV is the only active vulnerability intelligence source. NVD enrichment and ATT&CK mapping are not implemented.
+- The catalogue is fetched lazily and cached in process memory; it has no scheduled refresh, persistent catalogue store, or offline fallback.
+- Gemini answers are not validated claim-by-claim against citations. Displayed source records are retrieved evidence, not proof that every generated sentence is supported.
+- The benchmark has only 10 natural-language queries and non-expert judgments; expansion labels are source-checked but not independently expert-reviewed.
+- Semantic and hybrid strategies need optional dependencies/model files and have no reported retrieval evaluation.
+- No production deployment, public service URL, uptime, or live-data dashboard has been verified.
 
-MIT. See [LICENSE](LICENSE).
+## 🚀 Deployment
+
+**Deployment status:** Not deployed. No public Cerebro application URL is available yet.
+
+**Verified deployment URL:** _Add only after a public deployment has been tested._
+
+The Docker Compose configuration is intended for local demonstration. A public deployment still needs hosting, environment/secret configuration, HTTPS, and runtime verification.
+
+## 🗺️ Roadmap
+
+- Capture and add genuine screenshots from a running application.
+- Add a larger, independently reviewed retrieval evaluation set before comparing retrieval strategies for quality.
+- Evaluate semantic and hybrid retrieval only after the optional model is available and labels are expanded.
+- Add optional NVD enrichment and evidence-backed ATT&CK mappings with provenance and source-level tests.
+- Improve citation/claim validation and catalogue refresh behavior.
+- Deploy a public demo after operational and secret-handling checks.
+
+## 👤 Author
+
+**Eshaan49** — Cybersecurity engineering portfolio project focused on vulnerability intelligence and SOC analyst workflows.
+
+[GitHub profile](https://github.com/Eshaan49) · [Cerebro repository](https://github.com/Eshaan49/cybersecurity-rag-assistant)
+
+## 📄 License
+
+MIT License. See [LICENSE](LICENSE).
