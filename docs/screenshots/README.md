@@ -1,3 +1,9 @@
 # Cerebro screenshots
 
-This folder is reserved for genuine screenshots captured from the running Cerebro application. No application screenshots were present in the repository workspace when the README was updated. Add captures here after launching and verifying the UI; do not use mockups as runtime screenshots.
+This folder contains genuine screenshots of the deployed Cerebro interface:
+
+- `dashboard.jpeg` — Overview dashboard with live CISA KEV catalogue entries.
+- `CVE Explorer.jpeg` — CVE search results and selected vulnerability details.
+- `AI Analyst.jpeg` — Analyst conversation with retrieved CISA source records.
+
+The screenshots are visual documentation of the interface, not benchmark fixtures. Catalogue values shown in the captures may differ from the pinned benchmark snapshot as the live feed changes.

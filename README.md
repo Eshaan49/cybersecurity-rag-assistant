@@ -6,7 +6,7 @@
 
 Cerebro is an evidence-first vulnerability research assistant for exploring CISA's Known Exploited Vulnerabilities (KEV) catalogue. It combines exact CVE lookup and lexical retrieval with an optional Gemini answer step, exposed through a FastAPI backend and a dark SOC-inspired Next.js dashboard.
 
-> **Project status:** Local portfolio MVP. Docker configuration is included; public deployment has not been performed. Gemini is optional. BM25 is the default retrieval strategy. Semantic and hybrid modes are experimental options with no quality evaluation reported.
+> **Project status:** Portfolio MVP with public frontend and API deployments. Gemini is optional. BM25 is the default retrieval strategy. Semantic and hybrid modes are experimental options with no quality evaluation reported. The API is hosted on Render's free tier and may spin down after inactivity, causing cold-start delays.
 
 ---
 
@@ -132,7 +132,21 @@ Chat distinguishes generated answers, insufficient evidence, missing Gemini conf
 
 ## 📸 Dashboard screenshots
 
-No genuine screenshots were available in the repository workspace during this README update. The `docs/screenshots/` directory is reserved for captures from the running app. Screenshots will be added when a live Cerebro UI can be captured and verified; no mock interface images are used here.
+These genuine captures show the deployed Cerebro interface:
+
+![Cerebro Overview dashboard](docs/screenshots/dashboard.jpeg)
+
+*Overview dashboard with the configured BM25 strategy, catalogue summary, and recent CISA KEV entries.*
+
+![CVE Explorer](docs/screenshots/CVE%20Explorer.jpeg)
+
+*CVE Explorer showing catalogue search results and the selected vulnerability's CISA fields.*
+
+![AI Security Analyst](docs/screenshots/AI%20Analyst.jpeg)
+
+*AI Security Analyst response with the retrieved CISA source records displayed alongside the answer.*
+
+The dashboard uses the live CISA catalogue, so the visible record count can differ from the frozen benchmark snapshot described above.
 
 ## ⚙️ Installation and configuration
 
@@ -186,7 +200,7 @@ Copy-Item .env.example .env
 docker compose up --build
 ```
 
-The frontend is served at [http://localhost:3000](http://localhost:3000), and the API at [http://localhost:8000](http://localhost:8000). Stop with `Ctrl+C` or run `docker compose down`. Image builds retrieve declared dependencies from package registries. No external deployment is currently verified.
+The local frontend is served at [http://localhost:3000](http://localhost:3000), and the API at [http://localhost:8000](http://localhost:8000). Stop with `Ctrl+C` or run `docker compose down`. Image builds retrieve declared dependencies from package registries. Public deployments are listed in the Deployment section; the Compose setup remains intended for local demonstration.
 
 ## 🧪 Tests
 
@@ -210,7 +224,11 @@ cybersecurity-rag-assistant/
 ├── frontend/                 # Next.js dashboard and selection tests
 ├── tests/                    # Backend unit and API handler tests
 ├── benchmarks/               # Frozen CISA snapshot, labels, evaluator
-├── docs/screenshots/         # Reserved for genuine UI captures
+├── docs/
+│   └── screenshots/          # Genuine dashboard JPEG captures
+│       ├── dashboard.jpeg
+│       ├── CVE Explorer.jpeg
+│       └── AI Analyst.jpeg
 ├── Dockerfile                # FastAPI service image
 ├── docker-compose.yml        # Local API + frontend orchestration
 ├── rag.py                    # Existing CLI entry point
@@ -234,24 +252,25 @@ cybersecurity-rag-assistant/
 - Gemini answers are not validated claim-by-claim against citations. Displayed source records are retrieved evidence, not proof that every generated sentence is supported.
 - The benchmark has only 10 natural-language queries and non-expert judgments; expansion labels are source-checked but not independently expert-reviewed.
 - Semantic and hybrid strategies need optional dependencies/model files and have no reported retrieval evaluation.
-- No production deployment, public service URL, uptime, or live-data dashboard has been verified.
+- The public frontend and API are deployed, but no uptime or production service-level guarantee is claimed. The Render free-tier API may spin down after inactivity and take time to cold-start.
 
 ## 🚀 Deployment
 
-**Deployment status:** Not deployed. No public Cerebro application URL is available yet.
+**Deployment status:** Public portfolio deployment is available. The frontend is hosted on Vercel and the backend API on Render.
 
-**Verified deployment URL:** _Add only after a public deployment has been tested._
+- **Frontend:** [https://cerebro-nu-self.vercel.app/](https://cerebro-nu-self.vercel.app/)
+- **Backend API:** [https://cerebro-api-3c63.onrender.com](https://cerebro-api-3c63.onrender.com)
+- **Health check:** [https://cerebro-api-3c63.onrender.com/health](https://cerebro-api-3c63.onrender.com/health)
 
-The Docker Compose configuration is intended for local demonstration. A public deployment still needs hosting, environment/secret configuration, HTTPS, and runtime verification.
+The API uses Render's free tier, which can spin down after inactivity; the first request afterward may have a cold-start delay. These links identify the current deployments, not an uptime guarantee.
 
 ## 🗺️ Roadmap
 
-- Capture and add genuine screenshots from a running application.
 - Add a larger, independently reviewed retrieval evaluation set before comparing retrieval strategies for quality.
 - Evaluate semantic and hybrid retrieval only after the optional model is available and labels are expanded.
 - Add optional NVD enrichment and evidence-backed ATT&CK mappings with provenance and source-level tests.
 - Improve citation/claim validation and catalogue refresh behavior.
-- Deploy a public demo after operational and secret-handling checks.
+- Add operational monitoring and reliability hardening for the public demo.
 
 ## 👤 Author
 
